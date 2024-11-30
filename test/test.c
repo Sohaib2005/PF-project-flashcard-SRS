@@ -51,3 +51,25 @@ void addFlashcard(Flashcard** cards, int* count)
     store=temp;
     (*count)++;
 }
+void deleteFlashcard(Flashcard** cards, int* count)
+{
+    int id,i,correct;
+    printf("\nEnter id of flash card you want to remove: ");
+    scanf("%d",&id);
+    correct=validate(id,count,cards);
+    if(correct)
+    {
+    for(i=j;i<*count-1;i++)
+    {
+        (*cards)[i]=(*cards)[i+1];
+    }
+    (*count)--;
+    *cards=realloc(*cards,(*count)*sizeof(Flashcard));
+    printf("Flashcard deleted successfully!\n");
+    }
+    else
+    {
+        printf("ID does not exist!");
+        return;
+    }
+}
