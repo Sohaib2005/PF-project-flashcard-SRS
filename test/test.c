@@ -145,3 +145,52 @@ void display(Flashcard* cards,int count)
         printf("   %s \n", cards[i].answer);
     }
 }
+int main() {
+    Flashcard* cards=NULL;
+    int count = 0;
+    int choice;
+
+    while (1) {
+        printf("\nFlashcard System Menu:\n");
+        printf("1. Add Flashcard\n");
+        printf("2. Delete Flashcard\n");
+        printf("3. Edit Flashcards\n");
+        printf("4. Study Flashcards\n");
+        printf("5. Display all flashcards\n");
+        printf("Any other key to exit\n");
+        printf("Enter your choice: ");
+        scanf(" %d", &choice);
+        if(choice<1 || choice>5) 
+        {
+            printf("\nExiting program....");
+            free(cards);
+            exit(0);
+        }
+        getchar();  // To clear the newline character from input buffer
+        switch (choice) 
+        {
+            case 1:
+                addFlashcard(&cards, &count);
+                break;
+            case 2:
+                deleteFlashcard(&cards, &count);
+                break;
+            case 3:
+                editFlashcard(cards,count);
+                break;
+            case 4:
+                studyFlashcards(cards,count);
+                break;
+            case 5:
+                display(cards,count);
+                break;    
+            // case 4:
+            //     saveFlashcardsToFile(cards, count, "flashcards.dat");
+            //     free(cards);
+            //     printf("Flashcards saved and exiting...\n");
+            //     return 0;
+        }
+    }
+    free(cards);
+    return 0;
+}
