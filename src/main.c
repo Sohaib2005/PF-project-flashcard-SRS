@@ -3,7 +3,8 @@
 #include<time.h>
 #include<math.h>
 #include<stdlib.h>
-typedef struct 
+
+typedef struct
 {
     int id;
     char question[256];
@@ -14,7 +15,7 @@ typedef struct
     long nextReview; // Unix timestamp for the next review date
 } Flashcard;
 int j;
-// Function Prototypes
+
 void addFlashcard(Flashcard** cards, int* count);
 void editFlashcard(Flashcard* cards, int count);
 void deleteFlashcard(Flashcard** cards, int* count);
@@ -32,6 +33,7 @@ int validate(int id, int *count, Flashcard** cards) {
     printf("Invalid ID!\n");
     return 0; // ID not found
 }
+
 void addFlashcard(Flashcard** cards, int* count)
 {
     static int temp=0;
@@ -51,36 +53,34 @@ void addFlashcard(Flashcard** cards, int* count)
     store=temp;
     (*count)++;
 }
+
 void deleteFlashcard(Flashcard** cards, int* count)
 {
     int id,i,correct;
     printf("\nEnter id of flash card you want to remove: ");
     scanf("%d",&id);
     correct=validate(id,count,cards);
-    if(correct)
-    {
-    for(i=j;i<*count-1;i++)
-    {
-        (*cards)[i]=(*cards)[i+1];
-    }
-    (*count)--;
-    *cards=realloc(*cards,(*count)*sizeof(Flashcard));
-    printf("Flashcard deleted successfully!\n");
-    }
-    else
-    {
+    if(correct) {
+        for(i=j;i<*count-1;i++)
+            {
+                (*cards)[i]=(*cards)[i+1];
+            }
+        (*count)--;
+        *cards=realloc(*cards,(*count)*sizeof(Flashcard));
+        printf("Flashcard deleted successfully!\n");
+    } else {
         printf("ID does not exist!");
         return;
     }
 }
+
 void editFlashcard(Flashcard* cards, int count)
 {
-    int id,correct;
+    int id, correct;
     printf("\nEnter id of flash card you want to edit: ");
     scanf("%d",&id);
     correct=validate(id,&count,&cards);
-    if(correct)
-    {
+    if(correct) {
         printf("Question: %s\n",cards[j].question);
         printf("Answer : %s\n\n",cards[j].answer);
         getchar();
@@ -91,13 +91,12 @@ void editFlashcard(Flashcard* cards, int count)
         fgets(cards[j].answer,256,stdin);
         cards[j].answer[strcspn(cards[j].answer, "\n")] = '\0';
         printf("Flashcard edited successfully!\n");
-    }
-    else
-    {
+    } else {
         printf("ID does not exist!\n");
         return;
     }
 }
+
 void studyFlashcards(Flashcard* cards, int count)
 {
     long now = time(NULL);
@@ -133,20 +132,21 @@ void studyFlashcards(Flashcard* cards, int count)
             if (cards[i].easinessFactor < 1.3) cards[i].easinessFactor = 1.3;
 
             cards[i].nextReview = now + cards[i].interval * 24 * 3600;
-            }
-            }
+        }
+    }
 }
+
 void display(Flashcard* cards,int count)
 {
-    for (int i = 0; i < count; i++)
-    {
+    for (int i = 0; i < count; i++) {
         printf("\n%d. ", cards[i].id);
         printf("%s \n", cards[i].question);
         printf("   %s \n", cards[i].answer);
     }
 }
+
 int main() {
-    Flashcard* cards=NULL;
+    Flashcard* cards = NULL;
     int count = 0;
     int choice;
 
@@ -160,30 +160,28 @@ int main() {
         printf("Any other key to exit\n");
         printf("Enter your choice: ");
         scanf(" %d", &choice);
-        if(choice<1 || choice>5) 
-        {
+        if(choice<1 || choice>5) {
             printf("\nExiting program....");
             free(cards);
             exit(0);
         }
         getchar();  // To clear the newline character from input buffer
-        switch (choice) 
-        {
-            case 1:
-                addFlashcard(&cards, &count);
-                break;
-            case 2:
-                deleteFlashcard(&cards, &count);
-                break;
-            case 3:
-                editFlashcard(cards,count);
-                break;
-            case 4:
-                studyFlashcards(cards,count);
-                break;
-            case 5:
-                display(cards,count);
-                break;    
+        switch (choice) {
+        case 1:
+            addFlashcard(&cards, &count);
+            break;
+        case 2:
+            deleteFlashcard(&cards, &count);
+            break;
+        case 3:
+            editFlashcard(cards,count);
+            break;
+        case 4:
+            studyFlashcards(cards,count);
+            break;
+        case 5:
+            display(cards,count);
+            break;    
             // case 4:
             //     saveFlashcardsToFile(cards, count, "flashcards.dat");
             //     free(cards);
@@ -191,6 +189,7 @@ int main() {
             //     return 0;
         }
     }
+
     free(cards);
     return 0;
 }
