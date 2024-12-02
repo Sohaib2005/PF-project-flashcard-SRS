@@ -4,6 +4,8 @@
 #include<math.h>
 #include<stdlib.h>
 
+#define DB_FILENAME "flashcards.dat"
+
 typedef struct
 {
     int id;
@@ -14,13 +16,18 @@ typedef struct
     int repetitions;
     long nextReview; // Unix timestamp for the next review date
 } Flashcard;
+typedef struct
+{
+    int count;
+    Flashcard* cards;
+} Flashcards;
 int j;
 
 void addFlashcard(Flashcard** cards, int* count);
 void editFlashcard(Flashcard* cards, int count);
 void deleteFlashcard(Flashcard** cards, int* count);
-Flashcard* loadFlashcardsFromFile(int* count, const char* filename);
-void saveFlashcardsToFile(Flashcard* cards, int count, const char* filename);
+Flashcards loadFlashcardsFromFile(const char* filename);
+int saveFlashcardsToFile(Flashcard* cards, int count, const char* filename);
 void studyFlashcards(Flashcard* cards, int count);
 int store=0;
 
@@ -36,7 +43,7 @@ int validate(int id, int *count, Flashcard** cards) {
 
 void addFlashcard(Flashcard** cards, int* count)
 {
-    static int temp=0;
+    static int temp = 0;
     *cards = realloc(*cards, (*count + 1) * sizeof(Flashcard));
     printf("\nEnter Question: ");
     fgets((*cards)[*count].question,256,stdin);
@@ -48,9 +55,9 @@ void addFlashcard(Flashcard** cards, int* count)
     (*cards)[*count].interval = 0;
     (*cards)[*count].repetitions = 0;
     (*cards)[*count].nextReview = time(NULL);
-    (*cards)[*count].id=++temp;
+    (*cards)[*count].id = ++temp;
     printf("Card added successfully!\n");
-    store=temp;
+    store = temp;
     (*count)++;
 }
 
@@ -136,7 +143,53 @@ void studyFlashcards(Flashcard* cards, int count)
     }
 }
 
-void display(Flashcard* cards,int count)
+int saveFlashcardsToFile(Flashcard* cards, int count, const char* filename) {
+    FILE* file_handle = fopen(filename, "wb");
+    if (file_handle == NULL) {
+        printf("[ERROR] Could not open file '%s'. Do you have the correct permissions?", filename);
+        return -1;
+    }
+    // Simple format: Count of cards, then all of the flashcards
+    fwrite(&count, sizeof(int), 1, file_handle);
+    if (cards != NULL) {
+        fwrite(cards, sizeof(Flashcard), count, file_handle);
+    }
+    return 0;
+}
+
+// NOTE: Can return a null pointer on error!
+Flashcards loadFlashcardsFromFile(const char* filename) {
+    FILE* file_handle = fopen(filename, "r");
+    Flashcards fcs = {
+        .cards = NULL,
+        .count = 0
+    };
+    if (file_handle == NULL) {
+        printf("Could not find the database file '%s'.\n", filename);
+        printf("If this is your first time running the application, press 1. Otherwise, check if you have read permissions.\n");
+        printf("Create a fresh database? (1 = Yes, Anything else = No): ");
+        int should_create_db = 0;
+        scanf(" %d", &should_create_db);
+        if (should_create_db != 1) {
+            exit(-1);
+        } else {
+            saveFlashcardsToFile(fcs.cards, fcs.count, filename);
+        }
+    }
+    // Check if the file has more than just an int (the count of flashchards),
+    // meaning it probably has no actual cards
+    fseek(file_handle, 0L, SEEK_END);
+    int file_size = ftell(file_handle);
+    fseek(file_handle, 0L, SEEK_SET);
+    fread(&fcs.count, sizeof(int), 1, file_handle);
+    printf("DB size: %d\n", file_size);
+    if (file_size > sizeof(int)) {
+        fread(fcs.cards, sizeof(Flashcard), fcs.count, file_handle);
+    }
+    return fcs;
+}
+
+void display(Flashcard* cards, int count)
 {
     for (int i = 0; i < count; i++) {
         printf("\n%d. ", cards[i].id);
@@ -146,9 +199,14 @@ void display(Flashcard* cards,int count)
 }
 
 int main() {
-    Flashcard* cards = NULL;
-    int count = 0;
+    Flashcards fcs = loadFlashcardsFromFile(DB_FILENAME);
+    Flashcard* cards = fcs.cards;
+    int count = fcs.count;
     int choice;
+
+    if (cards == NULL) {
+        return -1;
+    }
 
     while (1) {
         printf("\nFlashcard System Menu:\n");
@@ -166,6 +224,7 @@ int main() {
             exit(0);
         }
         getchar();  // To clear the newline character from input buffer
+        int return_code = 0;
         switch (choice) {
         case 1:
             addFlashcard(&cards, &count);
@@ -182,11 +241,11 @@ int main() {
         case 5:
             display(cards,count);
             break;    
-            // case 4:
-            //     saveFlashcardsToFile(cards, count, "flashcards.dat");
-            //     free(cards);
-            //     printf("Flashcards saved and exiting...\n");
-            //     return 0;
+        case 6:
+            return_code = saveFlashcardsToFile(cards, count, DB_FILENAME);
+            free(cards);
+            printf("Flashcards saved and exiting...\n");
+            return 0;
         }
     }
 
