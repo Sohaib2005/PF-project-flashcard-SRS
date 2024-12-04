@@ -1,8 +1,8 @@
 #include<stdio.h>
+#include<stdlib.h>
+#include<errno.h>
 #include<string.h>
 #include<time.h>
-#include<math.h>
-#include<stdlib.h>
 
 #define DB_FILENAME "flashcards.dat"
 
@@ -23,17 +23,19 @@ typedef struct
 } Flashcards;
 int j;
 
-void addFlashcard(Flashcard** cards, int* count);
-void editFlashcard(Flashcard* cards, int count);
-void deleteFlashcard(Flashcard** cards, int* count);
+int validate(Flashcards const* fcs, int id);
+void addFlashcard(Flashcards* fcs);
+void editFlashcard(Flashcards* fcs);
+void deleteFlashcard(Flashcards* fcs);
 Flashcards loadFlashcardsFromFile(const char* filename);
-int saveFlashcardsToFile(Flashcard* cards, int count, const char* filename);
-void studyFlashcards(Flashcard* cards, int count);
-int store=0;
+int saveFlashcardsToFile(Flashcards* fcs, const char* filename);
+void studyFlashcards(Flashcards* fcs);
+void display(Flashcards const* fcs);
+int store = 0;
 
-int validate(int id, int *count, Flashcard** cards) {
-    for (j = 0; j < *count; j++) {
-        if (id == (*cards)[j].id) {
+int validate(Flashcards const* fcs, int id) {
+    for (j = 0; j < fcs->count; j++) {
+        if (id == fcs->cards[j].id) {
             return 1; // ID is valid
         }
     }
@@ -41,39 +43,48 @@ int validate(int id, int *count, Flashcard** cards) {
     return 0; // ID not found
 }
 
-void addFlashcard(Flashcard** cards, int* count)
+void addFlashcard(Flashcards* fcs)
 {
     static int temp = 0;
-    *cards = realloc(*cards, (*count + 1) * sizeof(Flashcard));
+    fcs->cards = realloc(fcs->cards, (size_t) (fcs->count + 1) * sizeof(Flashcard));
+
+    Flashcard new_card = {
+        .easinessFactor = 2.5,
+        .interval = 0,
+        .repetitions = 0,
+        .nextReview = time(NULL),
+        .id = ++temp,
+    };
+
     printf("\nEnter Question: ");
-    fgets((*cards)[*count].question,256,stdin);
-    (*cards)[*count].question[strcspn((*cards)[*count].question, "\n")] = '\0';
+    fgets(new_card.question,256,stdin);
+    size_t newline_char_index = strcspn(new_card.question, "\n");
+    new_card.question[newline_char_index] = '\0';
+
     printf("Enter Answer: ");
-    fgets((*cards)[*count].answer,256,stdin);
-    (*cards)[*count].answer[strcspn((*cards)[*count].answer, "\n")] = '\0';
-    (*cards)[*count].easinessFactor = 2.5;
-    (*cards)[*count].interval = 0;
-    (*cards)[*count].repetitions = 0;
-    (*cards)[*count].nextReview = time(NULL);
-    (*cards)[*count].id = ++temp;
+    fgets(new_card.answer,256,stdin);
+    newline_char_index = strcspn(new_card.answer, "\n");
+    new_card.answer[newline_char_index] = '\0';
+    
+    fcs->cards[fcs->count] = new_card;
     printf("Card added successfully!\n");
     store = temp;
-    (*count)++;
+    fcs->count++;
 }
 
-void deleteFlashcard(Flashcard** cards, int* count)
+void deleteFlashcard(Flashcards* fcs)
 {
-    int id,i,correct;
+    int id, i, correct;
     printf("\nEnter id of flash card you want to remove: ");
     scanf("%d",&id);
-    correct=validate(id,count,cards);
+    correct = validate(fcs,id);
     if(correct) {
-        for(i=j;i<*count-1;i++)
+        for(i = j; i < fcs->count - 1; i++)
             {
-                (*cards)[i]=(*cards)[i+1];
+                fcs->cards[i] = fcs->cards[i+1];
             }
-        (*count)--;
-        *cards=realloc(*cards,(*count)*sizeof(Flashcard));
+        fcs->count--;
+        fcs->cards = realloc(fcs->cards,(size_t) fcs->count*sizeof(Flashcard));
         printf("Flashcard deleted successfully!\n");
     } else {
         printf("ID does not exist!");
@@ -81,22 +92,22 @@ void deleteFlashcard(Flashcard** cards, int* count)
     }
 }
 
-void editFlashcard(Flashcard* cards, int count)
+void editFlashcard(Flashcards* fcs)
 {
     int id, correct;
     printf("\nEnter id of flash card you want to edit: ");
-    scanf("%d",&id);
-    correct=validate(id,&count,&cards);
+    scanf("%d", &id);
+    correct = validate(fcs,id);
     if(correct) {
-        printf("Question: %s\n",cards[j].question);
-        printf("Answer : %s\n\n",cards[j].answer);
+        printf("Question: %s\n",fcs->cards[j].question);
+        printf("Answer : %s\n\n",fcs->cards[j].answer);
         getchar();
         printf("Edit Question: ");
-        fgets(cards[j].question,256,stdin);
-        cards[j].question[strcspn(cards[j].question, "\n")] = '\0';
+        fgets(fcs->cards[j].question,256,stdin);
+        fcs->cards[j].question[strcspn(fcs->cards[j].question, "\n")] = '\0';
         printf("Edit Answer: ");
-        fgets(cards[j].answer,256,stdin);
-        cards[j].answer[strcspn(cards[j].answer, "\n")] = '\0';
+        fgets(fcs->cards[j].answer,256,stdin);
+        fcs->cards[j].answer[strcspn(fcs->cards[j].answer, "\n")] = '\0';
         printf("Flashcard edited successfully!\n");
     } else {
         printf("ID does not exist!\n");
@@ -104,62 +115,66 @@ void editFlashcard(Flashcard* cards, int count)
     }
 }
 
-void studyFlashcards(Flashcard* cards, int count)
+void studyFlashcards(Flashcards* fcs)
 {
     long now = time(NULL);
-    for (int i = 0; i < count; i++) {
-        if (cards[i].nextReview <= now) {
-            printf("\nQuestion: %s\n", cards[i].question);
+    for (int i = 0; i < fcs->count; i++) {
+        if (fcs->cards[i].nextReview <= now) {
+            printf("\nQuestion: %s\n", fcs->cards[i].question);
             char userAnswer[256];
             printf("Your Answer: ");
             fgets(userAnswer, 256, stdin);
             userAnswer[strcspn(userAnswer, "\n")] = '\0';
 
-            printf("Correct Answer: %s\n", cards[i].answer);
+            printf("Correct Answer: %s\n", fcs->cards[i].answer);
             printf("Rate your response (0-5): ");
             int quality;
             scanf("%d", &quality);
             getchar();
 
             if (quality >= 3) {
-                if (cards[i].repetitions == 0) {
-                    cards[i].interval = 1;
-                } else if (cards[i].repetitions == 1) {
-                    cards[i].interval = 6;
+                if (fcs->cards[i].repetitions == 0) {
+                    fcs->cards[i].interval = 1;
+                } else if (fcs->cards[i].repetitions == 1) {
+                    fcs->cards[i].interval = 6;
                 } else {
-                    cards[i].interval *= cards[i].easinessFactor;
+                    fcs->cards[i].interval *= (int) fcs->cards[i].easinessFactor;
                 }
-                cards[i].repetitions++;
+                fcs->cards[i].repetitions++;
             } else {
-                cards[i].repetitions = 0;
-                cards[i].interval = 1;
+                fcs->cards[i].repetitions = 0;
+                fcs->cards[i].interval = 1;
             }
 
-            cards[i].easinessFactor += (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
-            if (cards[i].easinessFactor < 1.3) cards[i].easinessFactor = 1.3;
+            fcs->cards[i].easinessFactor += (float) (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
+            if (fcs->cards[i].easinessFactor < 1.3f)
+                fcs->cards[i].easinessFactor = 1.3f;
 
-            cards[i].nextReview = now + cards[i].interval * 24 * 3600;
+            fcs->cards[i].nextReview = now + fcs->cards[i].interval * 24 * 3600;
         }
     }
 }
 
-int saveFlashcardsToFile(Flashcard* cards, int count, const char* filename) {
+int saveFlashcardsToFile(Flashcards* fcs, const char* filename) {
     FILE* file_handle = fopen(filename, "wb");
     if (file_handle == NULL) {
         printf("[ERROR] Could not open file '%s'. Do you have the correct permissions?", filename);
         return -1;
     }
     // Simple format: Count of cards, then all of the flashcards
-    fwrite(&count, sizeof(int), 1, file_handle);
-    if (cards != NULL) {
-        fwrite(cards, sizeof(Flashcard), count, file_handle);
+    printf("Saving flashcards...\n");
+    fwrite(&fcs->count, sizeof(int), 1, file_handle);
+    if (fcs->cards != NULL) {
+        fwrite(fcs->cards, sizeof(Flashcard), (size_t) fcs->count, file_handle);
     }
+    printf("Saved flashcards\n");
+    fclose(file_handle);
     return 0;
 }
 
 // NOTE: Can return a null pointer on error!
 Flashcards loadFlashcardsFromFile(const char* filename) {
-    FILE* file_handle = fopen(filename, "r");
+    FILE* file_handle = fopen(filename, "rb");
     Flashcards fcs = {
         .cards = NULL,
         .count = 0
@@ -173,40 +188,40 @@ Flashcards loadFlashcardsFromFile(const char* filename) {
         if (should_create_db != 1) {
             exit(-1);
         } else {
-            saveFlashcardsToFile(fcs.cards, fcs.count, filename);
+            saveFlashcardsToFile(&fcs, filename);
+            file_handle = fopen(filename, "rb");
         }
     }
-    // Check if the file has more than just an int (the count of flashchards),
-    // meaning it probably has no actual cards
-    fseek(file_handle, 0L, SEEK_END);
-    int file_size = ftell(file_handle);
-    fseek(file_handle, 0L, SEEK_SET);
-    fread(&fcs.count, sizeof(int), 1, file_handle);
-    printf("DB size: %d\n", file_size);
-    if (file_size > sizeof(int)) {
-        fread(fcs.cards, sizeof(Flashcard), fcs.count, file_handle);
+
+    printf("Loading flashcards from DB...\n");
+    if (fread(&fcs.count, sizeof(int), 1, file_handle) == -1)
+        printf("Unable to read the number of flashcards in the file: %s\n", strerror(errno));
+    if (fcs.count > 0) {
+        fcs.cards = malloc(sizeof(Flashcard) * (size_t) fcs.count);
+        if (fread(fcs.cards, sizeof(Flashcard), (size_t) fcs.count, file_handle) == -1)
+            printf("Unable to read the number of flashcards in the file: %s\n", strerror(errno));
     }
+    printf("Loaded flashcards from DB\n");
+    fclose(file_handle);
     return fcs;
 }
 
-void display(Flashcard* cards, int count)
+void display(Flashcards const* fcs)
 {
-    for (int i = 0; i < count; i++) {
-        printf("\n%d. ", cards[i].id);
-        printf("%s \n", cards[i].question);
-        printf("   %s \n", cards[i].answer);
+    if (fcs->cards == NULL) {
+        printf("No flashcards to display.\n");
+        return;
+    }
+    for (int i = 0; i < fcs->count; i++) {
+        printf("\n%d. ", fcs->cards[i].id);
+        printf("%s \n", fcs->cards[i].question);
+        printf("   %s \n", fcs->cards[i].answer);
     }
 }
 
 int main() {
     Flashcards fcs = loadFlashcardsFromFile(DB_FILENAME);
-    Flashcard* cards = fcs.cards;
-    int count = fcs.count;
     int choice;
-
-    if (cards == NULL) {
-        return -1;
-    }
 
     while (1) {
         printf("\nFlashcard System Menu:\n");
@@ -218,37 +233,34 @@ int main() {
         printf("Any other key to exit\n");
         printf("Enter your choice: ");
         scanf(" %d", &choice);
-        if(choice<1 || choice>5) {
-            printf("\nExiting program....");
-            free(cards);
-            exit(0);
-        }
         getchar();  // To clear the newline character from input buffer
-        int return_code = 0;
         switch (choice) {
         case 1:
-            addFlashcard(&cards, &count);
+            addFlashcard(&fcs);
             break;
         case 2:
-            deleteFlashcard(&cards, &count);
+            deleteFlashcard(&fcs);
             break;
         case 3:
-            editFlashcard(cards,count);
+            editFlashcard(&fcs);
             break;
         case 4:
-            studyFlashcards(cards,count);
+            studyFlashcards(&fcs);
             break;
         case 5:
-            display(cards,count);
-            break;    
-        case 6:
-            return_code = saveFlashcardsToFile(cards, count, DB_FILENAME);
-            free(cards);
+            display(&fcs);
+            break;
+        default:
+            saveFlashcardsToFile(&fcs, DB_FILENAME);
+            if (fcs.cards != NULL)
+                free(fcs.cards);
             printf("Flashcards saved and exiting...\n");
             return 0;
         }
     }
 
-    free(cards);
+    if (fcs.cards != NULL)
+        free(fcs.cards);
+
     return 0;
 }
