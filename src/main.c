@@ -127,7 +127,7 @@ void studyFlashcards(Flashcards* fcs)
             userAnswer[strcspn(userAnswer, "\n")] = '\0';
 
             printf("Correct Answer: %s\n", fcs->cards[i].answer);
-            printf("Rate your response (0-5): ");
+            printf("Rate your response (0-5): (0 to 2 for poor and 3 to 5 for good)");
             int quality;
             scanf("%d", &quality);
             getchar();
@@ -141,9 +141,11 @@ void studyFlashcards(Flashcards* fcs)
                     fcs->cards[i].interval *= (int) fcs->cards[i].easinessFactor;
                 }
                 fcs->cards[i].repetitions++;
+                //  fcs->cards[i].nextReview = now + 20; // Next review after 20 seconds
             } else {
                 fcs->cards[i].repetitions = 0;
                 fcs->cards[i].interval = 1;
+            //   fcs->cards[i].nextReview = now + 10; // Next review after 10 seconds
             }
 
             fcs->cards[i].easinessFactor += (float) (0.1 - (5 - quality) * (0.08 + (5 - quality) * 0.02));
